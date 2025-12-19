@@ -34,7 +34,7 @@ async def ingest_document(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/query", response_model=QueryResponse)
-async def query_documentation(request: QueryResponse):
+async def query_documentation(request: QueryRequest):
     """
     Endpoint to ask questions.
     RAG -> LLM -> Sandbox

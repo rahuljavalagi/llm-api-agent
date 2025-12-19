@@ -11,7 +11,7 @@ class LLMService:
         
         genai.configure(api_key=api_key)
 
-        self.model = genai.GenerativeModel('gemini-2.5-flash')
+        self.model = genai.GenerativeModel('gemini-3-flash-preview')
 
     def generate_response(self, question: str, context_chunks: list[str]) -> QueryResponse:
         """
