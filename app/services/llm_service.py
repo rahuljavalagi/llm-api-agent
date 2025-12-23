@@ -25,17 +25,21 @@ class LLMService:
         A user is asking a question about an API. Use the provided DOCUMENTATION to answer.
 
         DOCUMENTATION:
-        {context_chunks}
+        {context_text}
 
         USER QUESTION:
         {question}
 
         INSTRUCTIONS:
         1. Explain the answer clearly in natural language.
-        2. Provide a working cURL command to solve the problem.
-        3. You MUST return the response in STRICT JSON format with these exact keys:
-            - "explanation": (string)
-            - "generated_code": (string) - The cURL command only.
+        2. Provide working Python code using the 'requests' library to solve the problem.
+        3. The Python code must be complete and executable:
+           - Include all necessary imports (requests, json, etc.)
+           - Make the actual API call
+           - Print the results clearly
+        4. You MUST return the response in STRICT JSON format with these exact keys:
+            - "explanation": (string) - Clear explanation of the solution
+            - "generated_code": (string) - Complete executable Python code
 
         IMPORTANT: Do not wrap the output in markdown (like '''json). Just return raw JSON.
         """

@@ -40,6 +40,10 @@ class RAGService:
         )
         chunks = text_splitter.split_text(text)
 
+        existing_ids = self.collection.get()['ids']
+        if existing_ids:
+            self.collection.delete(ids=existing_ids)
+
         ids = [f"doc_{i}" for i in range(len(chunks))]
 
         self.collection.add(
