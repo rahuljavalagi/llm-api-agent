@@ -10,6 +10,9 @@ class QueryRequest(BaseModel):
 class CodeExecutionRequest(BaseModel):
     code: str
 
+class CodeExecutionResponse(BaseModel):
+    output: str
+
 class QueryResponse(BaseModel):
     explanation: str
     generated_code: str

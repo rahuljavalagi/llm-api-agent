@@ -14,7 +14,7 @@ class RAGService:
         
         self.embedding_fn = embedding_functions.GoogleGenerativeAiEmbeddingFunction(
             api_key=api_key,
-            model_name="models/text-embedding-004"
+            model_name="models/gemini-embedding-001"
         )
 
         self.collection = self.chroma_client.get_or_create_collection(
@@ -53,6 +53,16 @@ class RAGService:
 
         return f"Succesfully processed {len(chunks)} chunks from PDF."
     
+    def clear_documents(self):
+        """
+        Removes all documents and their embeddings from the collection.
+        """
+        existing_ids = self.collection.get()['ids']
+        if existing_ids:
+            self.collection.delete(ids=existing_ids)
+            return f"Successfully removed {len(existing_ids)} chunks from database."
+        return "No documents to remove."
+
     def search(self, query: str, n_results: int = 3) -> List[str]:
         """
         Takes a user question, finds the 3 most relevant chunks from database.
