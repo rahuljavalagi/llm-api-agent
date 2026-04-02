@@ -1,0 +1,37 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Python caches and tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments
+venv/
+.venv/
+
+# Local database and vector storage
+app.db
+*.db
+*.sqlite
+*.sqlite3
+chroma_db/
+
+# Frontend generated artifacts (extra safety)
+frontend/node_modules/
+frontend/dist/
+
+# Root-level accidental npm artifact
+/package-lock.json
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
