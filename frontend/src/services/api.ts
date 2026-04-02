@@ -12,6 +12,7 @@ const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/$/, ""
 const TOKEN_KEY = "llm_agent_token";
 const USER_KEY = "llm_agent_user";
 const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS ?? "30000");
+const AUTH_REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_AUTH_TIMEOUT_MS ?? "90000");
 const STREAM_REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_STREAM_TIMEOUT_MS ?? "180000");
 const UPLOAD_TIMEOUT_MS = Number(import.meta.env.VITE_UPLOAD_TIMEOUT_MS ?? "120000");
 
@@ -54,7 +55,7 @@ async function parseError(response: Response): Promise<string> {
 
 function createTimeoutError(timeoutMs: number): Error {
   return new Error(
-    `Request timed out after ${Math.round(timeoutMs / 1000)}s. Please try again.`
+    `Request timed out after ${Math.round(timeoutMs / 1000)}s. If this is Render free tier cold start, wait 30-60s and try again.`
   );
 }
 
@@ -158,7 +159,7 @@ export async function signup(username: string, password: string): Promise<AuthUs
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
-  });
+  }, AUTH_REQUEST_TIMEOUT_MS);
 
   if (!response.ok) {
     throw new Error(await parseError(response));
@@ -173,7 +174,7 @@ export async function login(username: string, password: string): Promise<AuthUse
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
-  });
+  }, AUTH_REQUEST_TIMEOUT_MS);
 
   if (!response.ok) {
     throw new Error(await parseError(response));
