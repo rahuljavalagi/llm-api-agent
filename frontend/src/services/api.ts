@@ -11,6 +11,9 @@ import type {
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/$/, "");
 const TOKEN_KEY = "llm_agent_token";
 const USER_KEY = "llm_agent_user";
+const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS ?? "30000");
+const STREAM_REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_STREAM_TIMEOUT_MS ?? "180000");
+const UPLOAD_TIMEOUT_MS = Number(import.meta.env.VITE_UPLOAD_TIMEOUT_MS ?? "120000");
 
 interface BackendChatSession {
   id: string;
@@ -49,13 +52,45 @@ async function parseError(response: Response): Promise<string> {
   return response.statusText || `Request failed (${response.status})`;
 }
 
+function createTimeoutError(timeoutMs: number): Error {
+  return new Error(
+    `Request timed out after ${Math.round(timeoutMs / 1000)}s. Please try again.`
+  );
+}
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  timeoutMs = REQUEST_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw createTimeoutError(timeoutMs);
+    }
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Network request failed.");
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function fetchJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers: HeadersInit = {
     ...authHeader(),
     ...(init.headers || {}),
   };
 
-  const response = await fetch(apiUrl(path), {
+  const response = await fetchWithTimeout(apiUrl(path), {
     ...init,
     headers,
   });
@@ -119,7 +154,7 @@ export function getStoredUser(): AuthUser | null {
 }
 
 export async function signup(username: string, password: string): Promise<AuthUser> {
-  const response = await fetch(apiUrl("/auth/signup"), {
+  const response = await fetchWithTimeout(apiUrl("/auth/signup"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
@@ -134,7 +169,7 @@ export async function signup(username: string, password: string): Promise<AuthUs
 }
 
 export async function login(username: string, password: string): Promise<AuthUser> {
-  const response = await fetch(apiUrl("/auth/login"), {
+  const response = await fetchWithTimeout(apiUrl("/auth/login"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
@@ -189,6 +224,7 @@ export async function ingestDocument(
     const xhr = new XMLHttpRequest();
     const formData = new FormData();
     formData.append("file", file);
+    xhr.timeout = UPLOAD_TIMEOUT_MS;
 
     xhr.upload.addEventListener("progress", (e) => {
       if (e.lengthComputable && onProgress) {
@@ -215,6 +251,10 @@ export async function ingestDocument(
       reject(new Error("Network error during upload"));
     });
 
+    xhr.addEventListener("timeout", () => {
+      reject(createTimeoutError(UPLOAD_TIMEOUT_MS));
+    });
+
     xhr.open("POST", apiUrl("/ingest"));
     const token = getStoredToken();
     if (token) {
@@ -228,14 +268,14 @@ export async function queryDocumentation(
   question: string,
   chatSessionId?: string
 ): Promise<QueryResponse> {
-  const response = await fetch(apiUrl("/query"), {
+  const response = await fetchWithTimeout(apiUrl("/query"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...authHeader(),
     },
     body: JSON.stringify({ question, chat_session_id: chatSessionId }),
-  });
+  }, STREAM_REQUEST_TIMEOUT_MS);
 
   if (!response.ok) {
     throw new Error(await parseError(response));
@@ -253,14 +293,14 @@ export async function streamQuery(
   onError: (error: Error) => void
 ): Promise<void> {
   try {
-    const response = await fetch(apiUrl("/query/stream"), {
+    const response = await fetchWithTimeout(apiUrl("/query/stream"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...authHeader(),
       },
       body: JSON.stringify({ question, chat_session_id: chatSessionId }),
-    });
+    }, STREAM_REQUEST_TIMEOUT_MS);
 
     if (!response.ok) {
       // Fallback to non-streaming endpoint
@@ -354,7 +394,7 @@ export async function streamQuery(
 }
 
 export async function deleteDocument(documentId: string): Promise<IngestResponse> {
-  const response = await fetch(apiUrl(`/documents/${documentId}`), {
+  const response = await fetchWithTimeout(apiUrl(`/documents/${documentId}`), {
     method: "DELETE",
     headers: {
       ...authHeader(),
@@ -376,7 +416,7 @@ export async function deleteDocument(documentId: string): Promise<IngestResponse
 }
 
 export async function executeCode(code: string): Promise<string> {
-  const response = await fetch(apiUrl("/execute"), {
+  const response = await fetchWithTimeout(apiUrl("/execute"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
