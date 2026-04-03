@@ -11,9 +11,20 @@ from sqlalchemy.types import TypeDecorator
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
 IS_POSTGRES = DATABASE_URL.startswith("postgresql")
 
+
+def _db_connect_timeout_seconds() -> int:
+    raw_timeout = os.getenv("DB_CONNECT_TIMEOUT_SECONDS", "10")
+    try:
+        return max(1, int(raw_timeout))
+    except ValueError:
+        return 10
+
+
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
+elif IS_POSTGRES:
+    connect_args = {"connect_timeout": _db_connect_timeout_seconds()}
 
 engine = create_engine(
     DATABASE_URL,

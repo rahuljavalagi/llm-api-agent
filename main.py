@@ -20,13 +20,20 @@ def get_allowed_origins() -> list[str]:
     return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
 
-init_db()
-
 app = FastAPI(
     title="LLM API Agent",
     description="An AI agent that can read documentation and execute API calls.",
     version="1.0.0"
 )
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    try:
+        init_db()
+    except Exception as exc:
+        # Keep process alive so health/debug endpoints remain reachable during transient DB issues.
+        print(f"Database initialization warning: {exc}")
 
 # CORS for React frontend
 app.add_middleware(
@@ -46,7 +53,7 @@ def read_root():
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
-        host=os.getenv("HOST", "127.0.0.1"),
+        host=os.getenv("HOST", "0.0.0.0"),
         port=int(os.getenv("PORT", "8000")),
-        reload=os.getenv("APP_ENV", "development") == "development",
+        reload=os.getenv("APP_ENV", "production") == "development",
     )

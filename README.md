@@ -123,6 +123,7 @@ Frontend runs on http://127.0.0.1:5173 by default.
 | ALLOWED_ORIGINS | Comma-separated frontend origins for CORS |
 | EMBEDDING_MODEL | Embedding model name |
 | EMBEDDING_DIMENSION | Vector size (default: 768) |
+| DB_CONNECT_TIMEOUT_SECONDS | Postgres connect timeout in seconds (default: 10) |
 | APP_ENV | development or production |
 
 ### Frontend (frontend/.env)

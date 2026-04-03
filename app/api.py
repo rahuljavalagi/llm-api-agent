@@ -2,6 +2,7 @@ import os
 import json
 import shutil
 import uuid
+from functools import lru_cache
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
@@ -32,8 +33,6 @@ import asyncio
 
 router = APIRouter()
 
-rag_service = RAGService()
-llm_service = LLMService()
 sandbox_service = SandboxService()
 
 SESSION_DAYS = int(os.getenv("SESSION_DAYS", "30"))
@@ -41,6 +40,36 @@ SESSION_DAYS = int(os.getenv("SESSION_DAYS", "30"))
 
 def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
+
+
+@lru_cache(maxsize=1)
+def _get_rag_service() -> RAGService:
+    return RAGService()
+
+
+@lru_cache(maxsize=1)
+def _get_llm_service() -> LLMService:
+    return LLMService()
+
+
+def _rag_service_or_503() -> RAGService:
+    try:
+        return _get_rag_service()
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail="RAG service unavailable. Check GOOGLE_API_KEY and embedding configuration.",
+        )
+
+
+def _llm_service_or_503() -> LLMService:
+    try:
+        return _get_llm_service()
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail="LLM service unavailable. Check GOOGLE_API_KEY configuration.",
+        )
 
 
 def _chat_session_or_404(db: Session, user_id: int, chat_session_id: str) -> ChatSession:
@@ -237,6 +266,7 @@ async def list_documents(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    rag_service = _rag_service_or_503()
     documents = rag_service.list_documents(current_user.id, db)
     return [
         DocumentResponse(
@@ -258,6 +288,7 @@ async def ingest_document(
     """
     Uploads PDF, stores chunk vectors and chunk metadata.
     """
+    rag_service = _rag_service_or_503()
     temp_filename = f"temp_{uuid.uuid4().hex}_{file.filename}"
     try:
         with open(temp_filename, "wb") as buffer:
@@ -291,6 +322,8 @@ async def query_documentation(
     """
     Query docs and return explanation + executable code.
     """
+    rag_service = _rag_service_or_503()
+    llm_service = _llm_service_or_503()
 
     try:
         context_chunks = rag_service.search(request.question, user_id=current_user.id, db=db)
@@ -325,6 +358,9 @@ async def query_documentation_stream(
     """
     Streaming endpoint: sends tokens via Server-Sent Events (SSE).
     """
+    rag_service = _rag_service_or_503()
+    llm_service = _llm_service_or_503()
+
     async def event_generator():
         try:
             context_chunks = rag_service.search(request.question, user_id=current_user.id, db=db)
@@ -385,6 +421,7 @@ async def clear_documents(
     """
     Removes all uploaded documents and embeddings for current user.
     """
+    rag_service = _rag_service_or_503()
     try:
         message = rag_service.clear_documents(current_user.id, db)
         return IngestResponse(message=message)
@@ -398,6 +435,7 @@ async def delete_document(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    rag_service = _rag_service_or_503()
     try:
         message = rag_service.delete_document(current_user.id, document_id, db)
         return IngestResponse(message=message)
