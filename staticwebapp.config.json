@@ -3,8 +3,7 @@
     {
       "route": "/*",
       "allowedRoles": [
-        "club_member",
-        "admin"
+        "authenticated"
       ]
     }
   ]
