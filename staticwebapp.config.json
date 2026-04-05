@@ -1,0 +1,11 @@
+{
+  "routes": [
+    {
+      "route": "/*",
+      "allowedRoles": [
+        "club_member",
+        "admin"
+      ]
+    }
+  ]
+}
