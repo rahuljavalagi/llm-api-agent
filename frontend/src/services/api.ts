@@ -55,7 +55,7 @@ async function parseError(response: Response): Promise<string> {
 
 function createTimeoutError(timeoutMs: number): Error {
   return new Error(
-    `Request timed out after ${Math.round(timeoutMs / 1000)}s. If this is Render free tier cold start, wait 30-60s and try again.`
+    `Request timed out after ${Math.round(timeoutMs / 1000)}s. If the backend is cold-starting, wait 30-60s and try again.`
   );
 }
 

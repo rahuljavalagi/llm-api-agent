@@ -345,7 +345,9 @@ async def query_documentation(
         )
 
         return response
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
